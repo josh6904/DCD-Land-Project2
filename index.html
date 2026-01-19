@@ -129,7 +129,7 @@
         .btn-danger:hover { background: #DC2626; }
         .btn-sm { padding: 6px 12px; font-size:  0.8rem; }
         .btn-block { width: 100%; }
-        .btn-icon { font-size: 1rem; }
+        .btn-icon { font-size: 1rem; background: none; border: none; cursor: pointer; }
 
         /* Forms */
         input, select, textarea { 
@@ -345,14 +345,18 @@
         <section id="view-pledges" class="hidden">
             <div class="flex-between" style="margin-bottom: 24px;">
                 <h1>Member Pledges</h1>
-                <div style="display: flex; gap: 10px;">
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <!-- NEW: Import Button -->
+                    <button class="btn btn-secondary" onclick="document.getElementById('csv-upload').click()">📂 Import CSV</button>
+                    <input type="file" id="csv-upload" accept=".csv" style="display: none;" onchange="app.handleCSVUpload(this)">
+                    
                     <button class="btn btn-secondary" onclick="app.exportCSV('pledges')">📥 Export</button>
                     <button class="btn btn-primary" onclick="app.openModal('pledge')">+ New Pledge</button>
                 </div>
             </div>
             
             <div class="card">
-                <div style="margin-bottom:  16px;">
+                <div style="margin-bottom: 16px;">
                     <input type="text" id="pledge-search" placeholder="Search by name..." onkeyup="app.renderPledges()">
                 </div>
                 <div class="table-container">
@@ -492,7 +496,6 @@
     <!-- === MODALS === -->
 
     <!-- 1. PLEDGE MODAL -->
-    <!-- FIX: The <form> tag now wraps the button so clicking 'Save' triggers onsubmit -->
     <div class="modal-overlay" id="modal-pledge">
         <div class="modal">
             <div class="modal-header">
@@ -525,7 +528,6 @@
     </div>
 
     <!-- 2. EXPENSE MODAL -->
-    <!-- FIX: The <form> tag now wraps the button -->
     <div class="modal-overlay" id="modal-expense">
         <div class="modal">
             <div class="modal-header">
@@ -558,7 +560,6 @@
     </div>
 
     <!-- 3. EDIT PLEDGE MODAL -->
-    <!-- FIX: The <form> tag now wraps the button -->
     <div class="modal-overlay" id="modal-edit-pledge">
         <div class="modal">
             <div class="modal-header">
@@ -579,6 +580,10 @@
                     
                     <label>Pledge Amount (KES)</label>
                     <input type="number" name="amount" required min="1">
+                    
+                    <small style="color: var(--accent); display:block; margin-top:10px;">
+                        ⚠️ <strong>Warning:</strong> Changing the amount here sets the <em>total pledge</em>. It does not affect payments already made.
+                    </small>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="app.closeModal('edit-pledge')">Cancel</button>
@@ -618,7 +623,6 @@
     </div>
 
     <!-- 5. MANUAL CASH MODAL -->
-    <!-- FIX: The <form> tag now wraps the button -->
     <div class="modal-overlay" id="modal-manual-cash">
         <div class="modal">
             <div class="modal-header">
@@ -660,15 +664,15 @@
             "Eagles", "Daughters of Faith", "Youth", 
             "Kingdom Generation", "Planning Committee", "Guests"
         ];
-        const DB_KEY = 'dcd_possess_land_v15'; // Version bump to clear old data if needed
+        const DB_KEY = 'dcd_possess_land_v16'; 
 
         // --- STORE ---
         const store = {
             data: {
-                pledges: [], // { id, name, department, amount, date }
-                transactions: [], // { id, pledgeId, amount, type, ref, date, method, department }
-                expenses: [], // { id, description, amount, category, date }
-                phases: [] // { id, name, totalTarget, date, deptTargets: {Eagles: 1000, ...} }
+                pledges: [], 
+                transactions: [], 
+                expenses: [], 
+                phases: [] 
             },
 
             init() {
@@ -676,7 +680,6 @@
                 if (saved) {
                     this.data = JSON.parse(saved);
                 } else {
-                    // Seed Initial Data
                     this.data.phases.push({
                         id: Date.now(),
                         name: "Initial Phase",
@@ -693,7 +696,6 @@
                 app.render();
             },
 
-            // --- PLEDGE METHODS ---
             addPledge(name, dept, amount) {
                 const existing = this.data.pledges.find(p => 
                     p.name.toLowerCase() === name.toLowerCase() &&
@@ -703,7 +705,7 @@
                 if (existing) {
                     existing.amount += parseFloat(amount);
                     this.save();
-                    app.showToast(`Updated pledge for ${name} (${dept})`, 'success');
+                    // Return null or specific flag to indicate "updated" vs "created"
                     return existing.id;
                 } else {
                     const id = Date.now().toString() + Math.random().toString(36).substr(2, 5);
@@ -722,14 +724,18 @@
             updatePledge(id, newData) {
                 const index = this.data.pledges.findIndex(p => p.id === id);
                 if (index > -1) {
-                    this.data.pledges[index] = { ...this.data.pledges[index], ...newData };
+                    // Only update name, dept, and amount. Don't touch ID or original creation date
+                    this.data.pledges[index] = { 
+                        ...this.data.pledges[index], 
+                        name: newData.name, 
+                        department: newData.department,
+                        amount: parseFloat(newData.amount)
+                    };
                     this.save();
-                    app.showToast('Pledge updated successfully', 'success');
                 }
             },
 
             deletePledge(id) {
-                // Check if pledge has transactions
                 const pledge = this.data.pledges.find(p => p.id === id);
                 if (pledge) {
                     const txCount = this.data.transactions.filter(t => t.pledgeId === id).length;
@@ -738,23 +744,19 @@
                         if (!proceed) return;
                     }
                 }
-
                 this.data.pledges = this.data.pledges.filter(p => p.id !== id);
                 this.save();
-                app.showToast('Pledge deleted', 'success');
             },
 
-            // --- TRANSACTION METHODS ---
             addTransaction(tx) {
                 this.data.transactions.unshift({
                     id: Date.now().toString(),
                     ...tx,
-                    date: new Date().toISOString() // Normalize date to ISO string
+                    date: new Date().toISOString()
                 });
                 this.save();
             },
 
-            // --- EXPENSE METHODS ---
             addExpense(desc, amount, category) {
                 this.data.expenses.push({
                     id: Date.now().toString(),
@@ -766,7 +768,6 @@
                 this.save();
             },
 
-            // --- PHASE METHODS ---
             addPhase(name, date, deptTargets) {
                 const total = Object.values(deptTargets).reduce((a,b) => a+b, 0);
                 this.data.phases.push({
@@ -832,14 +833,10 @@
 
             populateDeptSelects() {
                 const opts = DEPARTMENTS.map(d => `<option value="${d}">${d}</option>`).join('');
-                const modalDept = document.getElementById('modal-dept-select');
-                if(modalDept) modalDept.innerHTML = opts;
-                
-                const editDept = document.getElementById('edit-dept-select');
-                if(editDept) editDept.innerHTML = opts;
-
-                const cashDept = document.getElementById('cash-dept');
-                if(cashDept) cashDept.innerHTML = opts;
+                ['modal-dept-select', 'edit-dept-select', 'cash-dept'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if(el) el.innerHTML = opts;
+                });
                 
                 const names = [...new Set(store.data.pledges.map(p => p.name))];
                 const memberList = document.getElementById('member-list');
@@ -850,7 +847,6 @@
                 const container = document.getElementById('dept-targets-container');
                 if(container) {
                     container.innerHTML = '';
-                    
                     DEPARTMENTS.forEach(dept => {
                         const div = document.createElement('div');
                         div.className = 'input-group';
@@ -865,9 +861,7 @@
 
             updateTotalPreview() {
                 let total = 0;
-                document.querySelectorAll('.dept-target-input').forEach(inp => {
-                    total += Number(inp.value) || 0;
-                });
+                document.querySelectorAll('.dept-target-input').forEach(inp => total += Number(inp.value) || 0);
                 const preview = document.getElementById('total-target-preview');
                 if(preview) preview.innerText = app.formatMoney(total);
             },
@@ -905,15 +899,12 @@
                 const ref = document.getElementById('cash-ref').value || 'Manual Cash';
                 const timestamp = new Date(); 
 
-                // 1. Check Duplicate
                 const dupe = this.checkDuplicate(name, dept, amount, timestamp);
-
                 if (dupe) {
                     this.showToast(`Duplicate: Same amount from ${name} (${dept}) within 30 minutes.`, 'error');
                     return;
                 }
 
-                // 2. Find or Create Pledge
                 let pledge = store.data.pledges.find(p => 
                     p.name.toLowerCase() === name.toLowerCase() &&
                     p.department.toLowerCase() === dept.toLowerCase()
@@ -924,7 +915,6 @@
                     pledge = store.data.pledges.find(p => p.id === pid);
                 }
 
-                // 3. Add Transaction
                 store.addTransaction({
                     pledgeId: pledge.id,
                     name: pledge.name,
@@ -950,7 +940,37 @@
                 store.addExpense(desc, amount, category);
                 this.closeModal('expense');
                 e.target.reset();
-                this.showToast('Expense recorded', 'error'); // Red toast for expenses
+                this.showToast('Expense recorded', 'error'); 
+            },
+
+            // --- EDIT PLEDGE LOGIC ---
+            editPledge(id) {
+                const pledge = store.data.pledges.find(p => p.id === id);
+                if(!pledge) return;
+
+                // Populate Modal
+                document.getElementById('edit-id').value = pledge.id;
+                document.querySelector('#modal-edit-pledge [name="name"]').value = pledge.name;
+                document.querySelector('#modal-edit-pledge [name="department"]').value = pledge.department;
+                document.querySelector('#modal-edit-pledge [name="amount"]').value = pledge.amount;
+
+                this.openModal('edit-pledge');
+            },
+
+            updatePledgeSubmit(e) {
+                e.preventDefault();
+                const id = document.getElementById('edit-id').value;
+                const form = e.target;
+                
+                const newData = {
+                    name: form.name.value,
+                    department: form.department.value,
+                    amount: form.amount.value
+                };
+
+                store.updatePledge(id, newData);
+                this.closeModal('edit-pledge');
+                this.showToast('Pledge updated successfully', 'success');
             },
 
             deletePledge(id) {
@@ -965,100 +985,96 @@
                 }
             },
 
-            // --- DUPLICATE CHECKER ---
+            // --- CSV IMPORT LOGIC ---
+            handleCSVUpload(input) {
+                const file = input.files[0];
+                if(!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const text = e.target.result;
+                    const lines = text.split('\n');
+                    let count = 0;
+                    
+                    lines.forEach(line => {
+                        if(!line.trim()) return;
+                        // Expected format: Name,Department,Amount
+                        const parts = line.split(',');
+                        if(parts.length >= 3) {
+                            const name = parts[0].trim();
+                            const dept = parts[1].trim();
+                            const amount = parseFloat(parts[2].trim());
+                            
+                            if(!isNaN(amount) && name && dept) {
+                                store.addPledge(name, dept, amount);
+                                count++;
+                            }
+                        }
+                    });
+
+                    this.showToast(`Imported/Updated ${count} pledges!`, 'success');
+                    input.value = ''; // Reset input
+                };
+                reader.readAsText(file);
+            },
+
             checkDuplicate(name, dept, amount, dateObj) {
                 const THIRTY_MINS = 30 * 60 * 1000;
                 const checkTime = dateObj.getTime();
-
                 return store.data.transactions.some(t => {
                     const isSamePerson = t.name.toLowerCase() === name.toLowerCase() && 
                                          t.department.toLowerCase() === dept.toLowerCase();
                     const isSameAmount = Math.abs(t.amount - amount) < 0.01;
                     const txTime = new Date(t.date).getTime();
                     const isRecent = Math.abs(txTime - checkTime) < THIRTY_MINS;
-
                     return isSamePerson && isSameAmount && isRecent;
                 });
             },
 
-            // --- SMS PARSER LOGIC (FIXED LOGIC) ---
             processSMS() {
                 const btn = document.getElementById('btn-parse-trigger');
                 btn.innerText = "Analyzing...";
-                
                 try {
                     const text = document.getElementById('sms-input').value;
-                    
                     if(!text.trim()) {
                         alert("Please paste text first.");
                         btn.innerText = "⚡ Extract Data";
                         return;
                     }
-
                     const lines = text.split('\n');
                     const results = [];
-
                     lines.forEach((line) => {
-                        // 1. Find Amount
                         const amtMatch = line.match(/Ksh\s*([\d,]+\.?\d*)/i);
                         if(!amtMatch) return; 
-
                         const amount = parseFloat(amtMatch[1].replace(/,/g, ''));
-
-                        // 2. Determine Type
                         const isPersonal = line.toLowerCase().includes('received');
                         const isTill = line.toLowerCase().includes('sent to');
                         
                         if (isPersonal) {
                             const onIndex = line.indexOf(' on ');
-                            
-                            // FIX: Logic Inversion. If 'on' is NOT found (-1), try fallback. If found, parse.
                             if (onIndex === -1) {
-                                // Fallback Logic
                                 const dateFallback = line.match(/\d{1,2}\/\d{1,2}\/\d{2,4}\s+at\s+\d{1,2}:\d{2}\s*(AM|PM)/i);
                                 if(dateFallback) {
-                                    const dateObj = this.parseSmartMpesaDate(dateFallback[0]); // pass the matched string
+                                    const dateObj = this.parseSmartMpesaDate(dateFallback[0]);
                                     if(dateObj) {
-                                        // Extract Name from Fallback (rough logic)
                                         const nameMatch = line.match(/from\s+(.*?)\s+\d{1,2}\/\d{1,2}/i);
                                         let name = "Unknown";
                                         if(nameMatch) name = nameMatch[1].trim();
-
-                                        results.push({
-                                            amount,
-                                            name: name,
-                                            method: 'M-Pesa',
-                                            ref: 'SMS-' + Math.floor(Math.random()*10000),
-                                            date: dateObj
-                                        });
+                                        results.push({ amount, name, method: 'M-Pesa', ref: 'SMS-' + Math.floor(Math.random()*10000), date: dateObj });
                                     }
                                 }
                             } else {
-                                // Main Logic
                                 const parts = line.split('from');
                                 if(parts.length < 2) return;
-                                
                                 const rest = parts[1];
                                 const onIndexRest = rest.indexOf(' on ');
-                                
-                                if(onIndexRest === -1) return; // Double check
-
+                                if(onIndexRest === -1) return; 
                                 let rawName = rest.substring(0, onIndexRest).trim();
-                                const dateStr = rest.substring(onIndexRest + 4); // Skip ' on '
-                                
-                                // Remove phone number from name if present
+                                const dateStr = rest.substring(onIndexRest + 4); 
                                 rawName = rawName.replace(/\s+\d{10,}$/, '');
-
                                 const dateObj = this.parseSmartMpesaDate(dateStr);
-                                
                                 if(dateObj) {
-                                    results.push({
-                                        amount,
-                                        name: rawName,
-                                        method: 'M-Pesa',
-                                        ref: 'SMS-' + Math.floor(Math.random()*10000),
-                                        date: dateObj
-                                    });
+                                    results.push({ amount, name: rawName, method: 'M-Pesa', ref: 'SMS-' + Math.floor(Math.random()*10000), date: dateObj });
                                 }
                             }
                         } else if (isTill) {
@@ -1067,14 +1083,7 @@
                                  const onIndex = line.indexOf(' on ');
                                  const dateStr = onIndex > -1 ? line.substring(onIndex + 4) : '';
                                  const dateObj = dateStr ? this.parseSmartMpesaDate(dateStr) : new Date();
-
-                                 results.push({
-                                            amount,
-                                            name: tillMatch[1].trim(),
-                                            method: 'Till/Paybill',
-                                            ref: 'TILL-' + Math.floor(Math.random()*10000),
-                                            date: dateObj
-                                        });
+                                 results.push({ amount, name: tillMatch[1].trim(), method: 'Till/Paybill', ref: 'TILL-' + Math.floor(Math.random()*10000), date: dateObj });
                             }
                         }
                     });
@@ -1087,7 +1096,6 @@
 
                     this.stagedTx = results;
                     this.renderStaged();
-                    
                     document.getElementById('staged-area').classList.remove('hidden');
                     document.getElementById('btn-parse-trigger').classList.add('hidden');
                     document.getElementById('btn-commit-trigger').classList.remove('hidden');
@@ -1100,26 +1108,18 @@
                 }
             },
 
-            // SMART DATE PARSER (FIXED)
             parseSmartMpesaDate(str) {
                 if(!str) return null;
-                
-                // Match: DD/MM/YY at HH:MM AM/PM
                 const parts = str.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s+at\s+(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-                
                 if(!parts) return null;
-
                 const day = parseInt(parts[1]);
                 let month = parseInt(parts[2]) - 1; 
                 let year = parseInt(parts[3]);
                 if(year < 100) year += 2000;
-
                 let hours = parseInt(parts[4]);
                 const mins = parseInt(parts[5]);
-                
                 if (parts[6].toUpperCase() === 'PM' && hours !== 12) hours += 12;
                 if (parts[6].toUpperCase() === 'AM' && hours === 12) hours = 0;
-
                 return new Date(year, month, day, hours, mins);
             },
 
@@ -1127,10 +1127,8 @@
                 const list = document.getElementById('staged-list');
                 document.getElementById('staged-count').innerText = this.stagedTx.length;
                 list.innerHTML = '';
-
                 this.stagedTx.forEach((tx, idx) => {
                     const existing = store.data.pledges.find(p => p.name.toLowerCase() === tx.name.toLowerCase());
-                    
                     let deptSelect = '';
                     if (existing) {
                         deptSelect = `<span class="badge badge-success">${existing.department}</span>`;
@@ -1144,7 +1142,6 @@
                             </select>
                         `;
                     }
-
                     list.innerHTML += `
                         <div class="card" style="padding: 12px; margin-bottom: 8px; display:flex; justify-content:space-between; align-items:center;">
                             <div>
@@ -1167,27 +1164,19 @@
                         this.showToast(`Skipped ${tx.name}: No Department selected`, 'error');
                         return;
                     }
-
-                    // 1. DUPLICATE CHECK
                     const dupe = this.checkDuplicate(tx.name, tx.assignedDept, tx.amount, tx.date);
-                    
                     if (dupe) {
                         this.showToast(`Duplicate Skipped: ${tx.name} (${tx.assignedDept})`, 'error');
                         return;
                     }
-
-                    // 2. Find or Create Pledge
                     let pledge = store.data.pledges.find(p => 
                         p.name.toLowerCase() === tx.name.toLowerCase() &&
                         p.department.toLowerCase() === tx.assignedDept.toLowerCase()
                     );
-                    
                     if(!pledge) {
                         const pid = store.addPledge(tx.name, tx.assignedDept, tx.amount);
                         pledge = store.data.pledges.find(p => p.id === pid);
                     }
-
-                    // 3. Add Transaction
                     store.addTransaction({
                         pledgeId: pledge.id,
                         name: pledge.name,
@@ -1200,7 +1189,6 @@
                     });
                     count++;
                 });
-
                 if(count > 0) {
                     this.showToast(`Successfully committed ${count} transactions!`, 'success');
                     this.closeModal('sms-parse');
@@ -1237,14 +1225,11 @@
                 document.getElementById('dash-net').innerText = this.formatMoney(netCash);
                 document.getElementById('dash-pledges').innerText = this.formatMoney(totalPledges);
                 document.getElementById('dash-rate').innerText = rate + '%';
-                
-                // donors id exists?
                 const donorEl = document.getElementById('dash-donors');
                 if(donorEl) donorEl.innerText = uniqueDonors;
 
                 const phaseContainer = document.getElementById('phase-list');
                 phaseContainer.innerHTML = '';
-                
                 store.data.phases.forEach(phase => {
                     const pct = Math.min(100, Math.round((totalCash / phase.totalTarget) * 100));
                     phaseContainer.innerHTML += `
@@ -1280,14 +1265,12 @@
             renderPledges() {
                 const tbody = document.getElementById('pledges-table-body');
                 const search = document.getElementById('pledge-search').value.toLowerCase();
-                
                 let html = '';
                 store.data.pledges.forEach(p => {
                     if(p.name.toLowerCase().includes(search)) {
                         const paid = store.data.transactions
                             .filter(t => t.pledgeId === p.id)
                             .reduce((sum, t) => sum + t.amount, 0);
-                        
                         const balance = p.amount - paid;
                         const status = balance <= 0 
                             ? '<span class="badge badge-success">Completed</span>' 
@@ -1302,8 +1285,8 @@
                                 <td class="text-right" style="color:${balance > 0 ? 'var(--danger)' : 'var(--text-light)'}">${this.formatMoney(balance)}</td>
                                 <td class="text-right">${status}</td>
                                 <td class="text-right">
-                                    <span class="btn-icon" onclick="app.editPledge('${p.id}')" title="Edit">✎️</span>
-                                    <span class="btn-icon" onclick="app.deletePledge('${p.id}')" style="margin-left:8px; color:var(--danger);">🗑</span>
+                                    <button class="btn-icon" onclick="app.editPledge('${p.id}')" title="Edit">✎️</button>
+                                    <button class="btn-icon" onclick="app.deletePledge('${p.id}')" style="margin-left:8px; color:var(--danger);" title="Delete">🗑</button>
                                 </td>
                             </tr>
                         `;
@@ -1318,9 +1301,7 @@
                     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">No expenses recorded.</td></tr>';
                     return;
                 }
-
                 const sortedExp = [...store.data.expenses].sort((a, b) => new Date(a.date) - new Date(b.date));
-
                 tbody.innerHTML = sortedExp.map(e => `
                     <tr>
                         <td style="font-size:0.85rem; color:var(--text-light);">${this.formatDate(e.date)}</td>
@@ -1338,12 +1319,10 @@
                     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">No transactions found.</td></tr>';
                     return;
                 }
-
                 const ledgerRows = [
                     ...store.data.transactions.map(t => ({...t, kind: 'credit', color: ''})),
                     ...store.data.expenses.map(e => ({...e, kind: 'debit', color: 'money-negative', category: e.category}))
                 ].sort((a, b) => new Date(a.date) - new Date(b.date));
-
                 tbody.innerHTML = ledgerRows.map(t => `
                     <tr>
                         <td style="font-size:0.85rem; color:var(--text-light);">${this.formatDateTime(t.date)}</td>
@@ -1364,8 +1343,6 @@
                     const target = deptPledges.reduce((sum, p) => sum + p.amount, 0);
                     
                     const pIds = deptPledges.map(p => p.id);
-                    
-                    // FIX: Changed t.kind to t.type. Transactions use 'type', not 'kind'.
                     const collected = store.data.transactions
                         .filter(t => pIds.includes(t.pledgeId) && t.type === 'credit') 
                         .reduce((sum, t) => sum + t.amount, 0);
@@ -1375,13 +1352,11 @@
                         .reduce((sum, e) => sum + e.amount, 0);
 
                     const net = collected - spent;
-
                     const phaseTarget = (activePhase && activePhase.deptTargets && activePhase.deptTargets[dept]) 
                         ? activePhase.deptTargets[dept] 
                         : target;
 
                     const pct = phaseTarget ? Math.round((net / phaseTarget) * 100) : 0;
-
                     return { dept, target, collected, net, pct, phaseTarget };
                 }).sort((a,b) => b.net - a.net); 
                 
