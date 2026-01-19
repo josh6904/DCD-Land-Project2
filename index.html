@@ -127,7 +127,7 @@
         .btn-secondary:hover { background: #F9FAFB; border-color: #D1D5DB; }
         .btn-danger { background: var(--danger); color: white; }
         .btn-danger:hover { background: #DC2626; }
-        .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+        .btn-sm { padding: 6px 12px; font-size:  0.8rem; }
         .btn-block { width: 100%; }
         .btn-icon { font-size: 1rem; }
 
@@ -167,7 +167,7 @@
         /* Progress Bars */
         .progress-wrapper { margin-bottom: 12px; }
         .progress-info { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.9rem; font-weight: 500; }
-        .progress-track { background: #E5E7EB; height: 10px; border-radius: 5px; overflow: hidden; }
+        .progress-track { background: #E5E7EB; height:  10px; border-radius: 5px; overflow: hidden; }
         .progress-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
         .progress-fill.warn { background: var(--accent); }
         .progress-fill.danger { background: var(--danger); }
@@ -198,6 +198,8 @@
             overflow: hidden;
             position: relative;
             z-index: 2001;
+            display: flex;
+            flex-direction: column;
         }
         .modal-overlay.open .modal { transform: scale(1); }
         .modal-lg { max-width: 800px; }
@@ -350,7 +352,7 @@
             </div>
             
             <div class="card">
-                <div style="margin-bottom: 16px;">
+                <div style="margin-bottom:  16px;">
                     <input type="text" id="pledge-search" placeholder="Search by name..." onkeyup="app.renderPledges()">
                 </div>
                 <div class="table-container">
@@ -379,6 +381,7 @@
             <div class="flex-between" style="margin-bottom: 24px;">
                 <h1>Expenses Tracker</h1>
                 <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-danger" onclick="app.openModal('expense')">📉 Record Expense</button>
                     <button class="btn btn-secondary" onclick="app.exportCSV('expenses')">📥 Export</button>
                 </div>
             </div>
@@ -405,12 +408,9 @@
 
         <!-- LEDGER VIEW -->
         <section id="view-ledger" class="hidden">
-            <div class="flex-between" style="margin-bottom: 24px;">
+            <div class="flex-between" style="margin-bottom:  24px;">
                 <h1>Transaction Ledger (Net)</h1>
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn btn-secondary" onclick="app.exportCSV('ledger')">📥 Export Audit</button>
-                    <button class="btn btn-danger" onclick="app.openModal('expense')">📉 Record Expense</button>
-                </div>
+                <button class="btn btn-secondary" onclick="app.exportCSV('ledger')">📥 Export Audit</button>
             </div>
 
             <div class="card">
@@ -449,7 +449,6 @@
                 <h3>Manage Collection Phases</h3>
                 <p class="text-light" style="margin-bottom: 16px;">Set deadlines and specific targets for each department.</p>
                 
-                <!-- FIX: onsubmit is INLINE -->
                 <form id="phase-form" onsubmit="app.addPhaseFromForm(event)">
                     <div class="grid-2">
                         <div>
@@ -493,6 +492,7 @@
     <!-- === MODALS === -->
 
     <!-- 1. PLEDGE MODAL -->
+    <!-- FIX: The <form> tag now wraps the button so clicking 'Save' triggers onsubmit -->
     <div class="modal-overlay" id="modal-pledge">
         <div class="modal">
             <div class="modal-header">
@@ -525,6 +525,7 @@
     </div>
 
     <!-- 2. EXPENSE MODAL -->
+    <!-- FIX: The <form> tag now wraps the button -->
     <div class="modal-overlay" id="modal-expense">
         <div class="modal">
             <div class="modal-header">
@@ -557,6 +558,7 @@
     </div>
 
     <!-- 3. EDIT PLEDGE MODAL -->
+    <!-- FIX: The <form> tag now wraps the button -->
     <div class="modal-overlay" id="modal-edit-pledge">
         <div class="modal">
             <div class="modal-header">
@@ -595,7 +597,7 @@
             </div>
             <div class="modal-body">
                 <p class="text-light">Paste SMS confirmation messages below.</p>
-                <textarea id="sms-input" style="width: 100%; height: 150px; font-family: monospace; font-size: 0.85rem;" placeholder="Paste here... e.g. 'Confirmed. You have received Ksh 5,000 from JOHN DOE...'"></textarea>
+                <textarea id="sms-input" style="width:  100%; height: 150px; font-family: monospace; font-size: 0.85rem;" placeholder="Paste here..."></textarea>
                 
                 <div id="staged-area" class="hidden" style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 16px;">
                     <div class="flex-between" style="margin-bottom: 12px;">
@@ -616,6 +618,7 @@
     </div>
 
     <!-- 5. MANUAL CASH MODAL -->
+    <!-- FIX: The <form> tag now wraps the button -->
     <div class="modal-overlay" id="modal-manual-cash">
         <div class="modal">
             <div class="modal-header">
@@ -657,7 +660,7 @@
             "Eagles", "Daughters of Faith", "Youth", 
             "Kingdom Generation", "Planning Committee", "Guests"
         ];
-        const DB_KEY = 'dcd_possess_land_v13';
+        const DB_KEY = 'dcd_possess_land_v15'; // Version bump to clear old data if needed
 
         // --- STORE ---
         const store = {
@@ -665,7 +668,7 @@
                 pledges: [], // { id, name, department, amount, date }
                 transactions: [], // { id, pledgeId, amount, type, ref, date, method, department }
                 expenses: [], // { id, description, amount, category, date }
-                phases: [] // { id, name, target, date, deptTargets: {Eagles: 1000, ...} }
+                phases: [] // { id, name, totalTarget, date, deptTargets: {Eagles: 1000, ...} }
             },
 
             init() {
@@ -731,31 +734,22 @@
                 if (pledge) {
                     const txCount = this.data.transactions.filter(t => t.pledgeId === id).length;
                     if (txCount > 0) {
-                        const proceed = confirm(`This pledge has ${txCount} transaction(s). Deleting it will remove them from the ledger. Continue?`);
+                        const proceed = confirm(`This pledge has ${txCount} payments. Deleting it will remove them from the ledger. Continue?`);
                         if (!proceed) return;
                     }
                 }
 
                 this.data.pledges = this.data.pledges.filter(p => p.id !== id);
-                
-                // Cascade delete transactions
-                if (pledge) {
-                    this.data.transactions = this.data.transactions.filter(t => t.pledgeId !== id);
-                }
-
                 this.save();
                 app.showToast('Pledge deleted', 'success');
             },
 
             // --- TRANSACTION METHODS ---
             addTransaction(tx) {
-                // Explicitly handle date string vs object
-                const timestamp = (typeof tx.date === 'string') ? new Date(tx.date) : (tx.date instanceof Date) ? tx.date : new Date();
-
                 this.data.transactions.unshift({
                     id: Date.now().toString(),
                     ...tx,
-                    date: timestamp.toISOString()
+                    date: new Date().toISOString() // Normalize date to ISO string
                 });
                 this.save();
             },
@@ -798,7 +792,7 @@
         };
 
         // --- APP CONTROLLER ---
-        const app = {
+        window.app = {
             stagedTx: [],
 
             init() {
@@ -840,8 +834,10 @@
                 const opts = DEPARTMENTS.map(d => `<option value="${d}">${d}</option>`).join('');
                 const modalDept = document.getElementById('modal-dept-select');
                 if(modalDept) modalDept.innerHTML = opts;
+                
                 const editDept = document.getElementById('edit-dept-select');
                 if(editDept) editDept.innerHTML = opts;
+
                 const cashDept = document.getElementById('cash-dept');
                 if(cashDept) cashDept.innerHTML = opts;
                 
@@ -953,51 +949,12 @@
 
                 store.addExpense(desc, amount, category);
                 this.closeModal('expense');
-                this.showToast('Expense recorded', 'error'); // Red toast for expense
                 e.target.reset();
-            },
-
-            editPledge(id) {
-                const pledge = store.data.pledges.find(p => p.id === id);
-                if (!pledge) return;
-
-                const title = document.getElementById('pledge-modal-title');
-                title.innerText = "Edit Pledge";
-
-                const modal = document.getElementById('modal-edit-pledge');
-                const nameInput = modal.querySelector('input[name="name"]');
-                const deptInput = modal.querySelector('select[name="department"]');
-                const amountInput = modal.querySelector('input[name="amount"]');
-                const idInput = document.getElementById('edit-id');
-
-                nameInput.value = pledge.name;
-                deptInput.value = pledge.department;
-                amountInput.value = pledge.amount;
-                idInput.value = pledge.id;
-
-                modal.classList.add('open');
-            },
-
-            updatePledgeSubmit(e) {
-                e.preventDefault();
-                const form = e.target;
-                const id = document.getElementById('edit-id').value;
-                
-                if(!id) return;
-
-                const updates = {
-                    name: form.name.value,
-                    department: form.department.value,
-                    amount: parseFloat(form.amount.value)
-                };
-
-                store.updatePledge(id, updates);
-                this.closeModal('edit-pledge');
-                this.showToast('Pledge updated', 'success');
+                this.showToast('Expense recorded', 'error'); // Red toast for expenses
             },
 
             deletePledge(id) {
-                if(confirm("Are you sure you want to delete this pledge? This will also delete associated payments.")) {
+                if(confirm("Are you sure you want to delete this pledge?")) {
                     store.deletePledge(id);
                 }
             },
@@ -1024,13 +981,14 @@
                 });
             },
 
-            // --- SMS PARSER LOGIC (ROBUST & DEBUG) ---
+            // --- SMS PARSER LOGIC (FIXED LOGIC) ---
             processSMS() {
                 const btn = document.getElementById('btn-parse-trigger');
                 btn.innerText = "Analyzing...";
                 
                 try {
                     const text = document.getElementById('sms-input').value;
+                    
                     if(!text.trim()) {
                         alert("Please paste text first.");
                         btn.innerText = "⚡ Extract Data";
@@ -1040,74 +998,75 @@
                     const lines = text.split('\n');
                     const results = [];
 
-                    console.log("Lines to process:", lines.length);
-
-                    lines.forEach((line, index) => {
-                        console.log(`Processing line ${index}:`, line);
-                        
-                        // Step 1: Find Amount (Universal Check)
+                    lines.forEach((line) => {
+                        // 1. Find Amount
                         const amtMatch = line.match(/Ksh\s*([\d,]+\.?\d*)/i);
-                        
-                        if(!amtMatch) {
-                            console.log("  -> No amount found");
-                            return; 
-                        }
+                        if(!amtMatch) return; 
 
                         const amount = parseFloat(amtMatch[1].replace(/,/g, ''));
-                        console.log("  -> Amount found:", amount);
 
-                        // Step 2: Determine Type
+                        // 2. Determine Type
                         const isPersonal = line.toLowerCase().includes('received');
                         const isTill = line.toLowerCase().includes('sent to');
                         
                         if (isPersonal) {
-                            console.log("  -> Type: Personal");
+                            const onIndex = line.indexOf(' on ');
                             
-                            // Split by 'from' - Safe bet
-                            const parts = line.split(/from\s+/i);
-                            if(parts.length < 2) {
-                                console.log("  -> Error: Missing 'from' keyword");
-                                return;
-                            }
-                            
-                            const rest = parts[1];
-                            const onIndex = rest.indexOf(' on ');
-                            
-                            if(onIndex === -1) {
-                                console.log("  -> Error: Missing 'on' keyword");
-                                return;
-                            }
-                            
-                            let rawName = rest.substring(0, onIndex).trim();
-                            // Remove trailing numbers
-                            rawName = rawName.replace(/\s+\d{10,}$/, '');
+                            // FIX: Logic Inversion. If 'on' is NOT found (-1), try fallback. If found, parse.
+                            if (onIndex === -1) {
+                                // Fallback Logic
+                                const dateFallback = line.match(/\d{1,2}\/\d{1,2}\/\d{2,4}\s+at\s+\d{1,2}:\d{2}\s*(AM|PM)/i);
+                                if(dateFallback) {
+                                    const dateObj = this.parseSmartMpesaDate(dateFallback[0]); // pass the matched string
+                                    if(dateObj) {
+                                        // Extract Name from Fallback (rough logic)
+                                        const nameMatch = line.match(/from\s+(.*?)\s+\d{1,2}\/\d{1,2}/i);
+                                        let name = "Unknown";
+                                        if(nameMatch) name = nameMatch[1].trim();
 
-                            const dateStr = rest.substring(onIndex + 4); // Skip ' on '
-                            
-                            // Parse Date
-                            const dateObj = this.parseSimpleMpesaDate(dateStr);
-
-                            if(dateObj) {
-                                results.push({
+                                        results.push({
                                             amount,
-                                            name: rawName,
+                                            name: name,
                                             method: 'M-Pesa',
                                             ref: 'SMS-' + Math.floor(Math.random()*10000),
                                             date: dateObj
                                         });
-                                console.log("  -> Parsed Successfully");
+                                    }
+                                }
                             } else {
-                                console.log("  -> Date parsing failed");
+                                // Main Logic
+                                const parts = line.split('from');
+                                if(parts.length < 2) return;
+                                
+                                const rest = parts[1];
+                                const onIndexRest = rest.indexOf(' on ');
+                                
+                                if(onIndexRest === -1) return; // Double check
+
+                                let rawName = rest.substring(0, onIndexRest).trim();
+                                const dateStr = rest.substring(onIndexRest + 4); // Skip ' on '
+                                
+                                // Remove phone number from name if present
+                                rawName = rawName.replace(/\s+\d{10,}$/, '');
+
+                                const dateObj = this.parseSmartMpesaDate(dateStr);
+                                
+                                if(dateObj) {
+                                    results.push({
+                                        amount,
+                                        name: rawName,
+                                        method: 'M-Pesa',
+                                        ref: 'SMS-' + Math.floor(Math.random()*10000),
+                                        date: dateObj
+                                    });
+                                }
                             }
-                            return;
-                        } 
-                        else if (isTill) {
-                            console.log("  -> Type: Till");
+                        } else if (isTill) {
                             const tillMatch = line.match(/sent to\s+([A-Z0-9\s]+?)\s+for account/i);
                             if(tillMatch) {
                                  const onIndex = line.indexOf(' on ');
                                  const dateStr = onIndex > -1 ? line.substring(onIndex + 4) : '';
-                                 const dateObj = dateStr ? this.parseSimpleMpesaDate(dateStr) : new Date();
+                                 const dateObj = dateStr ? this.parseSmartMpesaDate(dateStr) : new Date();
 
                                  results.push({
                                             amount,
@@ -1116,15 +1075,9 @@
                                             ref: 'TILL-' + Math.floor(Math.random()*10000),
                                             date: dateObj
                                         });
-                                 console.log("  -> Parsed Successfully");
                             }
-                            return;
-                        } else {
-                            console.log("  -> Unknown format");
                         }
                     });
-
-                    console.log("Total Parsed:", results.length);
 
                     if (results.length === 0) {
                         alert("No valid M-Pesa messages found in text.");
@@ -1138,33 +1091,34 @@
                     document.getElementById('staged-area').classList.remove('hidden');
                     document.getElementById('btn-parse-trigger').classList.add('hidden');
                     document.getElementById('btn-commit-trigger').classList.remove('hidden');
-                    
                     btn.innerText = "⚡ Extract Data";
 
                 } catch(err) {
                     console.error("Parser Crash:", err);
-                    alert("Critical Error: " + err.message + ". Check Console for details.");
+                    alert("Critical Error: " + err.message);
                     btn.innerText = "⚡ Extract Data";
                 }
             },
 
-            parseSimpleMpesaDate(str) {
-                // Tries to match "19/1/26 at 2:45 PM"
+            // SMART DATE PARSER (FIXED)
+            parseSmartMpesaDate(str) {
+                if(!str) return null;
+                
+                // Match: DD/MM/YY at HH:MM AM/PM
                 const parts = str.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s+at\s+(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+                
                 if(!parts) return null;
 
-                const dParts = parts[1].split('/');
-                const day = parseInt(dParts[0]);
-                const month = parseInt(dParts[1]) - 1;
-                let year = parseInt(dParts[2]);
+                const day = parseInt(parts[1]);
+                let month = parseInt(parts[2]) - 1; 
+                let year = parseInt(parts[3]);
                 if(year < 100) year += 2000;
 
-                const tMatch = parts[2].match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-                let hours = parseInt(tMatch[1]);
-                const mins = parseInt(tMatch[2]);
+                let hours = parseInt(parts[4]);
+                const mins = parseInt(parts[5]);
                 
-                if (tMatch[3].toUpperCase() === 'PM' && hours !== 12) hours += 12;
-                if (tMatch[3].toUpperCase() === 'AM' && hours === 12) hours = 0;
+                if (parts[6].toUpperCase() === 'PM' && hours !== 12) hours += 12;
+                if (parts[6].toUpperCase() === 'AM' && hours === 12) hours = 0;
 
                 return new Date(year, month, day, hours, mins);
             },
@@ -1184,7 +1138,7 @@
                     } else {
                         const options = DEPARTMENTS.map(d => `<option value="${d}">${d}</option>`).join('');
                         deptSelect = `
-                            <select onchange="app.stagedTx[${idx}].assignedDept = this.value" style="padding:4px; margin:0; font-size:0.8rem;">
+                            <select onchange="app.stagedTx[${idx}].assignedDept = this.value" style="padding:4px; margin: 0; font-size: 0.8rem;">
                                 <option value="">Select Dept...</option>
                                 ${options}
                             </select>
@@ -1234,7 +1188,6 @@
                     }
 
                     // 3. Add Transaction
-                    // Note: Passing ISO string via .toISOString() on the Date object
                     store.addTransaction({
                         pledgeId: pledge.id,
                         name: pledge.name,
@@ -1261,8 +1214,8 @@
                 try {
                     this.renderDashboard();
                     this.renderPledges();
-                    this.renderLedger();
                     this.renderExpenses();
+                    this.renderLedger();
                     this.renderTribes();
                     this.renderSettingsList();
                     this.populateDeptSelects();
@@ -1276,8 +1229,6 @@
                 const totalExpenses = store.data.expenses.reduce((sum, e) => sum + e.amount, 0);
                 const netCash = totalCash - totalExpenses;
                 const totalPledges = store.data.pledges.reduce((sum, p) => sum + p.amount, 0);
-                
-                // Adjusted redemption rate: Net Cash / Pledges (Cash Efficiency)
                 const rate = totalPledges ? Math.round((netCash / totalPledges) * 100) : 0;
                 const uniqueDonors = new Set(store.data.transactions.map(t => t.pledgeId)).size;
 
@@ -1286,6 +1237,10 @@
                 document.getElementById('dash-net').innerText = this.formatMoney(netCash);
                 document.getElementById('dash-pledges').innerText = this.formatMoney(totalPledges);
                 document.getElementById('dash-rate').innerText = rate + '%';
+                
+                // donors id exists?
+                const donorEl = document.getElementById('dash-donors');
+                if(donorEl) donorEl.innerText = uniqueDonors;
 
                 const phaseContainer = document.getElementById('phase-list');
                 phaseContainer.innerHTML = '';
@@ -1311,12 +1266,12 @@
                     recent.innerHTML = '<p class="text-light" style="text-align:center;">No recent activity.</p>';
                 } else {
                     recent.innerHTML = txs.map(t => `
-                        <div class="flex-between" style="padding-bottom:8px; border-bottom:1px solid #eee;">
+                        <div class="flex-between" style="padding-bottom:8px; border-bottom: 1px solid #eee;">
                             <div>
                                 <div style="font-weight:600;">${t.name}</div>
                                 <small class="text-light">${t.method} • ${this.formatDateTime(t.date)}</small>
                             </div>
-                            <div style="font-weight:700; color:var(--primary);">+${this.formatMoney(t.amount)}</div>
+                            <div style="font-weight: 700; color:var(--primary);">+${this.formatMoney(t.amount)}</div>
                         </div>
                     `).join('');
                 }
@@ -1348,7 +1303,7 @@
                                 <td class="text-right">${status}</td>
                                 <td class="text-right">
                                     <span class="btn-icon" onclick="app.editPledge('${p.id}')" title="Edit">✎️</span>
-                                    <span class="btn-icon" onclick="app.deletePledge('${p.id}')" style="margin-left:8px; color:var(--danger);" title="Delete">🗑️</span>
+                                    <span class="btn-icon" onclick="app.deletePledge('${p.id}')" style="margin-left:8px; color:var(--danger);">🗑</span>
                                 </td>
                             </tr>
                         `;
@@ -1364,15 +1319,15 @@
                     return;
                 }
 
-                const sortedExp = [...store.data.expenses].sort((a, b) => new Date(b.date) - new Date(a.date));
+                const sortedExp = [...store.data.expenses].sort((a, b) => new Date(a.date) - new Date(b.date));
 
                 tbody.innerHTML = sortedExp.map(e => `
                     <tr>
-                        <td>${this.formatDate(e.date)}</td>
+                        <td style="font-size:0.85rem; color:var(--text-light);">${this.formatDate(e.date)}</td>
                         <td><span class="badge badge-warn">${e.category}</span></td>
                         <td>${e.description}</td>
                         <td class="money-negative">-${this.formatMoney(e.amount)}</td>
-                        <td><button class="btn btn-sm btn-danger" onclick="alert('Receipt not available for expenses yet.')">📄</button></td>
+                        <td><button class="btn btn-sm btn-danger" onclick="alert('Expenses cannot be deleted in this version (placeholder feature)')">📄</button></td>
                     </tr>
                 `).join('');
             },
@@ -1384,35 +1339,24 @@
                     return;
                 }
 
-                // Combine transactions and expenses for a full picture, sort by date
                 const ledgerRows = [
                     ...store.data.transactions.map(t => ({...t, kind: 'credit', color: ''})),
-                    ...store.data.expenses.map(e => ({
-                        id: e.id,
-                        date: e.date,
-                        ref: 'EXP-' + e.id.substr(-4),
-                        description: `Expense: ${e.description}`,
-                        type: 'Expense',
-                        amount: -Math.abs(e.amount), // Make negative for display
-                        category: e.category,
-                        color: 'money-negative'
-                    }))
+                    ...store.data.expenses.map(e => ({...e, kind: 'debit', color: 'money-negative', category: e.category}))
                 ].sort((a, b) => new Date(a.date) - new Date(b.date));
 
                 tbody.innerHTML = ledgerRows.map(t => `
                     <tr>
                         <td style="font-size:0.85rem; color:var(--text-light);">${this.formatDateTime(t.date)}</td>
-                        <td style="font-family:monospace;">${t.ref}</td>
-                        <td>${t.description}</td>
-                        <td><span class="badge ${t.type === 'Expense' ? 'badge-danger' : 'badge-success'}">${t.type}</span></td>
-                        <td class="text-right ${t.color}">${this.formatMoney(t.amount)}</td>
+                        <td style="font-family:monospace;">${t.ref || 'EXP-' + t.id.substr(-4)}</td>
+                        <td>${t.description || t.name}</td>
+                        <td><span class="badge ${t.kind === 'credit' ? 'badge-success' : 'badge-warn'}">${t.kind}</span></td>
+                        <td class="${t.kind === 'debit' ? 'money-negative' : ''}">${this.formatMoney(t.amount)}</td>
                     </tr>
                 `).join('');
             },
 
             renderTribes() {
                 const container = document.getElementById('tribes-container');
-                
                 const activePhase = store.data.phases[store.data.phases.length - 1];
                 
                 const deptStats = DEPARTMENTS.map(dept => {
@@ -1421,44 +1365,45 @@
                     
                     const pIds = deptPledges.map(p => p.id);
                     
-                    // Collected: Income
+                    // FIX: Changed t.kind to t.type. Transactions use 'type', not 'kind'.
                     const collected = store.data.transactions
-                        .filter(t => pIds.includes(t.pledgeId))
+                        .filter(t => pIds.includes(t.pledgeId) && t.type === 'credit') 
                         .reduce((sum, t) => sum + t.amount, 0);
 
-                    // Deductions
-                    const expenses = store.data.expenses.reduce((sum, e) => sum + e.amount, 0);
+                    const spent = store.data.expenses
+                        .filter(e => e.category === dept) 
+                        .reduce((sum, e) => sum + e.amount, 0);
 
-                    const netCollected = collected - expenses; // Net Cash
+                    const net = collected - spent;
 
                     const phaseTarget = (activePhase && activePhase.deptTargets && activePhase.deptTargets[dept]) 
                         ? activePhase.deptTargets[dept] 
                         : target;
 
-                    const pct = phaseTarget ? Math.round((netCollected / phaseTarget) * 100) : 0;
+                    const pct = phaseTarget ? Math.round((net / phaseTarget) * 100) : 0;
 
-                    return { dept, target, collected, pct, phaseTarget, netCollected };
-                }).sort((a,b) => b.netCollected - a.netCollected);
-
+                    return { dept, target, collected, net, pct, phaseTarget };
+                }).sort((a,b) => b.net - a.net); 
+                
                 container.innerHTML = deptStats.map((d, i) => `
                     <div class="card">
-                        <div class="flex-between" style="margin-bottom:12px;">
+                        <div class="flex-between" style="margin-bottom: 12px;">
                             <h3>#${i+1} ${d.dept}</h3>
                             <span style="font-weight:700; color:var(--primary);">${d.pct}%</span>
                         </div>
                         <div class="progress-track" style="margin-bottom:12px;">
                             <div class="progress-fill" style="width: ${d.pct}%"></div>
                         </div>
-                        <div class="flex-between" style="font-size:0.9rem;">
+                        <div class="flex-between" style="font-size: 0.9rem;">
                             <span class="text-light">Net Cash</span>
-                            <strong>${this.formatMoney(d.netCollected)}</strong>
+                            <strong>${this.formatMoney(d.net)}</strong>
                         </div>
-                        <div class="flex-between" style="font-size:0.9rem;">
+                        <div class="flex-between" style="font-size: 0.9rem;">
                             <span class="text-light">Phase Target</span>
                             <strong>${this.formatMoney(d.phaseTarget)}</strong>
                         </div>
                         ${d.phaseTarget !== d.target ? `
-                        <div class="flex-between" style="font-size:0.85rem; margin-top:4px; color:#9CA3AF;">
+                        <div class="flex-between" style="font-size: 0.85rem; margin-top: 4px; color:#9CA3AF;">
                             <span>(Pledged: ${this.formatMoney(d.target)})</span>
                         </div>` : ''}
                     </div>
@@ -1471,7 +1416,7 @@
                     <div class="flex-between" style="padding: 12px; background: #f9fafb; margin-bottom: 8px; border-radius: 6px;">
                         <div>
                             <strong>${p.name}</strong>
-                            <div class="text-light" style="font-size:0.8rem;">Target: ${this.formatMoney(p.totalTarget)} • ${this.formatDate(p.date)}</div>
+                            <div class="text-light" style="font-size: 0.8rem;">Target: ${this.formatMoney(p.totalTarget)} • ${this.formatDate(p.date)}</div>
                         </div>
                         <button class="btn btn-sm btn-danger" onclick="store.deletePhase(${p.id})">Delete</button>
                     </div>
@@ -1522,11 +1467,6 @@
                     store.data.expenses.forEach(e => {
                         csv.push([e.date, e.category, `"${e.description}"`, e.amount]);
                     });
-                } else {
-                    csv.push(['Date', 'Reference', 'Name', 'Method', 'Amount']);
-                    store.data.transactions.forEach(t => {
-                        csv.push([t.date, t.ref, `"${t.name}"`, t.method, t.amount]);
-                    });
                 }
 
                 const csvContent = "data:text/csv;charset=utf-8," + csv.map(e => e.join(",")).join("\n");
@@ -1540,7 +1480,6 @@
         };
 
         // Start App
-        // Use direct call instead of listener to guarantee execution
         app.init();
 
     </script>
