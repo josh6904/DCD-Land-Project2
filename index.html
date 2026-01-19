@@ -44,7 +44,7 @@
             padding: 24px;
             flex-shrink: 0;
             transition: transform 0.3s ease;
-            z-index: 50; /* Lower than modals */
+            z-index: 50;
         }
 
         main { 
@@ -118,7 +118,7 @@
             gap: 8px; 
             justify-content: center;
             position: relative;
-            z-index: 20; /* Ensure buttons are clickable */
+            z-index: 20;
         }
         .btn:active { transform: translateY(1px); }
         .btn-primary { background: var(--primary); color: white; }
@@ -129,6 +129,7 @@
         .btn-danger:hover { background: #DC2626; }
         .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
         .btn-block { width: 100%; }
+        .btn-icon { font-size: 1rem; }
 
         /* Forms */
         input, select, textarea { 
@@ -155,6 +156,7 @@
         th { background: #F9FAFB; color: var(--text-light); font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; }
         tr:last-child td { border-bottom: none; }
         .money { font-family: 'Courier New', Courier, monospace; font-weight: 700; letter-spacing: -0.5px; }
+        .money-negative { color: var(--danger); }
         
         /* Badges */
         .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; display: inline-block; }
@@ -177,7 +179,7 @@
             display: none; 
             align-items: center; 
             justify-content: center; 
-            z-index: 2000; /* VERY HIGH Z-INDEX TO FIX CLICK ISSUES */
+            z-index: 2000;
             backdrop-filter: blur(2px);
             opacity: 0;
             transition: opacity 0.2s ease;
@@ -195,7 +197,7 @@
             transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
             overflow: hidden;
             position: relative;
-            z-index: 2001; /* Higher than overlay */
+            z-index: 2001;
         }
         .modal-overlay.open .modal { transform: scale(1); }
         .modal-lg { max-width: 800px; }
@@ -208,7 +210,7 @@
         .close-modal { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-light); line-height: 1; }
         
         /* Toast Notifications */
-        #toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 2002; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+        #toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 3000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
         .toast { 
             background: #1F2937; color: white; padding: 12px 20px; border-radius: 8px; 
             box-shadow: var(--shadow-md); font-size: 0.9rem; 
@@ -243,7 +245,7 @@
                 background: white; 
                 color: var(--text-main);
                 box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
-                z-index: 1000; /* Mobile nav highest */
+                z-index: 1000;
             }
             .brand { display: none; }
             .nav-group { flex-direction: row; justify-content: space-between; width: 100%; }
@@ -268,6 +270,7 @@
             <div class="nav-item active" onclick="app.router('dashboard')">📊 Dashboard</div>
             <div class="nav-item" onclick="app.router('pledges')">🤝 Pledges</div>
             <div class="nav-item" onclick="app.router('ledger')">💰 Ledger</div>
+            <div class="nav-item" onclick="app.router('expenses')">📉 Expenses</div>
             <div class="nav-item" onclick="app.router('tribes')">🏆 Tribes</div>
             <div class="nav-item" onclick="app.router('settings')">⚙️ Settings</div>
         </nav>
@@ -293,20 +296,24 @@
             <!-- KPI CARDS -->
             <div class="grid-4">
                 <div class="card">
-                    <p class="text-light">Total Cash Collected</p>
+                    <p class="text-light">Gross Cash</p>
                     <h2 class="text-success" style="color: var(--primary); font-size: 2rem;" id="dash-cash">KES 0</h2>
+                </div>
+                <div class="card">
+                    <p class="text-light">Expenses</p>
+                    <h2 class="text-danger" style="font-size: 2rem;" id="dash-expenses">KES 0</h2>
+                </div>
+                <div class="card">
+                    <p class="text-light">Net Cash (On Hand)</p>
+                    <h2 class="text-secondary" style="color: var(--secondary); font-size: 2rem;" id="dash-net">KES 0</h2>
                 </div>
                 <div class="card">
                     <p class="text-light">Total Pledges</p>
                     <h2 style="color: var(--secondary); font-size: 2rem;" id="dash-pledges">KES 0</h2>
                 </div>
                 <div class="card">
-                    <p class="text-light">Redemption Rate</p>
+                    <p class="text-light">Cash Efficiency</p>
                     <h2 id="dash-rate">0%</h2>
-                </div>
-                <div class="card">
-                    <p class="text-light">Total Donors</p>
-                    <h2 id="dash-donors">0</h2>
                 </div>
             </div>
 
@@ -356,6 +363,7 @@
                                 <th class="text-right">Paid</th>
                                 <th class="text-right">Balance</th>
                                 <th class="text-right">Status</th>
+                                <th style="width: 80px;"></th> <!-- Actions -->
                             </tr>
                         </thead>
                         <tbody id="pledges-table-body">
@@ -366,11 +374,43 @@
             </div>
         </section>
 
+        <!-- EXPENSES VIEW -->
+        <section id="view-expenses" class="hidden">
+            <div class="flex-between" style="margin-bottom: 24px;">
+                <h1>Expenses Tracker</h1>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-secondary" onclick="app.exportCSV('expenses')">📥 Export</button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Category</th>
+                                <th>Description</th>
+                                <th class="text-right">Amount</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="expenses-table-body">
+                            <!-- JS Injected -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
         <!-- LEDGER VIEW -->
         <section id="view-ledger" class="hidden">
             <div class="flex-between" style="margin-bottom: 24px;">
-                <h1>Transaction Ledger</h1>
-                <button class="btn btn-secondary" onclick="app.exportCSV('ledger')">📥 Export Audit</button>
+                <h1>Transaction Ledger (Net)</h1>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-secondary" onclick="app.exportCSV('ledger')">📥 Export Audit</button>
+                    <button class="btn btn-danger" onclick="app.openModal('expense')">📉 Record Expense</button>
+                </div>
             </div>
 
             <div class="card">
@@ -409,7 +449,7 @@
                 <h3>Manage Collection Phases</h3>
                 <p class="text-light" style="margin-bottom: 16px;">Set deadlines and specific targets for each department.</p>
                 
-                <!-- FIX: onsubmit is now INLINE in HTML to ensure it always works -->
+                <!-- FIX: onsubmit is INLINE -->
                 <form id="phase-form" onsubmit="app.addPhaseFromForm(event)">
                     <div class="grid-2">
                         <div>
@@ -456,7 +496,7 @@
     <div class="modal-overlay" id="modal-pledge">
         <div class="modal">
             <div class="modal-header">
-                <h3>New Pledge</h3>
+                <h3 id="pledge-modal-title">New Pledge</h3>
                 <button class="close-modal" onclick="app.closeModal('pledge')">&times;</button>
             </div>
             <form onsubmit="app.submitPledge(event)">
@@ -478,13 +518,75 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="app.closeModal('pledge')">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Pledge</button>
+                    <button type="submit" class="btn btn-primary" id="btn-save-pledge">Save Pledge</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- 2. SMS PARSER MODAL -->
+    <!-- 2. EXPENSE MODAL -->
+    <div class="modal-overlay" id="modal-expense">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Record New Expense</h3>
+                <button class="close-modal" onclick="app.closeModal('expense')">&times;</button>
+            </div>
+            <form onsubmit="app.submitExpense(event)">
+                <div class="modal-body">
+                    <label>Category</label>
+                    <select id="expense-category" required>
+                        <option value="General">General</option>
+                        <option value="Logistics">Logistics (Transport/Fuel)</option>
+                        <option value="Venue">Venue/Hall Booking</option>
+                        <option value="Marketing">Marketing/Print</option>
+                        <option value="Refreshments">Refreshments/Catering</option>
+                    </select>
+
+                    <label>Description</label>
+                    <input type="text" id="expense-desc" required placeholder="e.g. Transport to venue">
+                    
+                    <label>Amount (KES)</label>
+                    <input type="number" id="expense-amount" required min="1" placeholder="0.00">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="app.closeModal('expense')">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Record Expense</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 3. EDIT PLEDGE MODAL -->
+    <div class="modal-overlay" id="modal-edit-pledge">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Edit Pledge</h3>
+                <button class="close-modal" onclick="app.closeModal('edit-pledge')">&times;</button>
+            </div>
+            <form onsubmit="app.updatePledgeSubmit(event)">
+                <div class="modal-body">
+                    <input type="hidden" id="edit-id">
+                    
+                    <label>Member Name</label>
+                    <input type="text" name="name" required>
+                    
+                    <label>Department</label>
+                    <select name="department" id="edit-dept-select" required>
+                        <!-- Populated by JS -->
+                    </select>
+                    
+                    <label>Pledge Amount (KES)</label>
+                    <input type="number" name="amount" required min="1">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="app.closeModal('edit-pledge')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Pledge</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 4. SMS PARSER MODAL -->
     <div class="modal-overlay" id="modal-sms-parse">
         <div class="modal modal-lg" style="max-width: 600px;">
             <div class="modal-header">
@@ -513,7 +615,7 @@
         </div>
     </div>
 
-    <!-- 3. MANUAL CASH MODAL -->
+    <!-- 5. MANUAL CASH MODAL -->
     <div class="modal-overlay" id="modal-manual-cash">
         <div class="modal">
             <div class="modal-header">
@@ -555,13 +657,14 @@
             "Eagles", "Daughters of Faith", "Youth", 
             "Kingdom Generation", "Planning Committee", "Guests"
         ];
-        const DB_KEY = 'dcd_possess_land_v12'; // Final Version
+        const DB_KEY = 'dcd_possess_land_v13';
 
         // --- STORE ---
         const store = {
             data: {
                 pledges: [], // { id, name, department, amount, date }
                 transactions: [], // { id, pledgeId, amount, type, ref, date, method, department }
+                expenses: [], // { id, description, amount, category, date }
                 phases: [] // { id, name, target, date, deptTargets: {Eagles: 1000, ...} }
             },
 
@@ -587,6 +690,7 @@
                 app.render();
             },
 
+            // --- PLEDGE METHODS ---
             addPledge(name, dept, amount) {
                 const existing = this.data.pledges.find(p => 
                     p.name.toLowerCase() === name.toLowerCase() &&
@@ -612,6 +716,38 @@
                 }
             },
 
+            updatePledge(id, newData) {
+                const index = this.data.pledges.findIndex(p => p.id === id);
+                if (index > -1) {
+                    this.data.pledges[index] = { ...this.data.pledges[index], ...newData };
+                    this.save();
+                    app.showToast('Pledge updated successfully', 'success');
+                }
+            },
+
+            deletePledge(id) {
+                // Check if pledge has transactions
+                const pledge = this.data.pledges.find(p => p.id === id);
+                if (pledge) {
+                    const txCount = this.data.transactions.filter(t => t.pledgeId === id).length;
+                    if (txCount > 0) {
+                        const proceed = confirm(`This pledge has ${txCount} transaction(s). Deleting it will remove them from the ledger. Continue?`);
+                        if (!proceed) return;
+                    }
+                }
+
+                this.data.pledges = this.data.pledges.filter(p => p.id !== id);
+                
+                // Cascade delete transactions
+                if (pledge) {
+                    this.data.transactions = this.data.transactions.filter(t => t.pledgeId !== id);
+                }
+
+                this.save();
+                app.showToast('Pledge deleted', 'success');
+            },
+
+            // --- TRANSACTION METHODS ---
             addTransaction(tx) {
                 // Explicitly handle date string vs object
                 const timestamp = (typeof tx.date === 'string') ? new Date(tx.date) : (tx.date instanceof Date) ? tx.date : new Date();
@@ -624,6 +760,19 @@
                 this.save();
             },
 
+            // --- EXPENSE METHODS ---
+            addExpense(desc, amount, category) {
+                this.data.expenses.push({
+                    id: Date.now().toString(),
+                    description: desc,
+                    amount: parseFloat(amount),
+                    category,
+                    date: new Date().toISOString()
+                });
+                this.save();
+            },
+
+            // --- PHASE METHODS ---
             addPhase(name, date, deptTargets) {
                 const total = Object.values(deptTargets).reduce((a,b) => a+b, 0);
                 this.data.phases.push({
@@ -649,7 +798,6 @@
         };
 
         // --- APP CONTROLLER ---
-        // Changed from window.app to const app for stability
         const app = {
             stagedTx: [],
 
@@ -664,7 +812,7 @@
                 document.getElementById(`view-${viewId}`).classList.remove('hidden');
                 
                 document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-                const map = { 'dashboard':0, 'pledges':1, 'ledger':2, 'tribes':3, 'settings':4 };
+                const map = { 'dashboard':0, 'pledges':1, 'ledger':2, 'expenses':3, 'tribes':4, 'settings':5 };
                 const navItems = document.querySelectorAll('.nav-item');
                 if(navItems[map[viewId]]) {
                     navItems[map[viewId]].classList.add('active');
@@ -672,10 +820,12 @@
             },
 
             openModal(type) {
-                document.getElementById(`modal-${type}`).classList.add('open');
+                const el = document.getElementById(`modal-${type}`);
+                if(el) el.classList.add('open');
             },
             closeModal(type) {
-                document.getElementById(`modal-${type}`).classList.remove('open');
+                const el = document.getElementById(`modal-${type}`);
+                if(el) el.classList.remove('open');
                 if(type === 'sms-parse') {
                     document.getElementById('sms-input').value = '';
                     document.getElementById('staged-area').classList.add('hidden');
@@ -690,7 +840,8 @@
                 const opts = DEPARTMENTS.map(d => `<option value="${d}">${d}</option>`).join('');
                 const modalDept = document.getElementById('modal-dept-select');
                 if(modalDept) modalDept.innerHTML = opts;
-                
+                const editDept = document.getElementById('edit-dept-select');
+                if(editDept) editDept.innerHTML = opts;
                 const cashDept = document.getElementById('cash-dept');
                 if(cashDept) cashDept.innerHTML = opts;
                 
@@ -756,7 +907,7 @@
                 const dept = document.getElementById('cash-dept').value;
                 const amount = parseFloat(document.getElementById('cash-amount').value);
                 const ref = document.getElementById('cash-ref').value || 'Manual Cash';
-                const timestamp = new Date(); // Use CURRENT time for manual cash
+                const timestamp = new Date(); 
 
                 // 1. Check Duplicate
                 const dupe = this.checkDuplicate(name, dept, amount, timestamp);
@@ -786,12 +937,69 @@
                     type: 'credit',
                     method: 'Cash',
                     ref: ref,
-                    date: timestamp.toISOString() // Pass explicit date for Cash too
+                    date: timestamp.toISOString()
                 });
 
                 this.closeModal('manual-cash');
                 this.showToast('Payment recorded!', 'success');
                 e.target.reset();
+            },
+
+            submitExpense(e) {
+                e.preventDefault();
+                const desc = document.getElementById('expense-desc').value;
+                const amount = parseFloat(document.getElementById('expense-amount').value);
+                const category = document.getElementById('expense-category').value;
+
+                store.addExpense(desc, amount, category);
+                this.closeModal('expense');
+                this.showToast('Expense recorded', 'error'); // Red toast for expense
+                e.target.reset();
+            },
+
+            editPledge(id) {
+                const pledge = store.data.pledges.find(p => p.id === id);
+                if (!pledge) return;
+
+                const title = document.getElementById('pledge-modal-title');
+                title.innerText = "Edit Pledge";
+
+                const modal = document.getElementById('modal-edit-pledge');
+                const nameInput = modal.querySelector('input[name="name"]');
+                const deptInput = modal.querySelector('select[name="department"]');
+                const amountInput = modal.querySelector('input[name="amount"]');
+                const idInput = document.getElementById('edit-id');
+
+                nameInput.value = pledge.name;
+                deptInput.value = pledge.department;
+                amountInput.value = pledge.amount;
+                idInput.value = pledge.id;
+
+                modal.classList.add('open');
+            },
+
+            updatePledgeSubmit(e) {
+                e.preventDefault();
+                const form = e.target;
+                const id = document.getElementById('edit-id').value;
+                
+                if(!id) return;
+
+                const updates = {
+                    name: form.name.value,
+                    department: form.department.value,
+                    amount: parseFloat(form.amount.value)
+                };
+
+                store.updatePledge(id, updates);
+                this.closeModal('edit-pledge');
+                this.showToast('Pledge updated', 'success');
+            },
+
+            deletePledge(id) {
+                if(confirm("Are you sure you want to delete this pledge? This will also delete associated payments.")) {
+                    store.deletePledge(id);
+                }
             },
 
             hardReset() {
@@ -835,66 +1043,84 @@
                     console.log("Lines to process:", lines.length);
 
                     lines.forEach((line, index) => {
-                        try {
-                            // 1. Find Amount (Universal Check)
-                            const amtMatch = line.match(/Ksh\s*([\d,]+\.?\d*)/i);
-                            
-                            if(!amtMatch) return;
-                            
-                            const amount = parseFloat(amtMatch[1].replace(/,/g, ''));
-                            console.log(`  Line ${index}: Amount found`, amount);
+                        console.log(`Processing line ${index}:`, line);
+                        
+                        // Step 1: Find Amount (Universal Check)
+                        const amtMatch = line.match(/Ksh\s*([\d,]+\.?\d*)/i);
+                        
+                        if(!amtMatch) {
+                            console.log("  -> No amount found");
+                            return; 
+                        }
 
-                            // 2. Determine Type
-                            const isPersonal = line.toLowerCase().includes('received');
-                            const isTill = line.toLowerCase().includes('sent to');
+                        const amount = parseFloat(amtMatch[1].replace(/,/g, ''));
+                        console.log("  -> Amount found:", amount);
+
+                        // Step 2: Determine Type
+                        const isPersonal = line.toLowerCase().includes('received');
+                        const isTill = line.toLowerCase().includes('sent to');
+                        
+                        if (isPersonal) {
+                            console.log("  -> Type: Personal");
                             
-                            if (isPersonal) {
-                                // Split by 'from'
-                                const parts = line.split(/from\s+/i);
-                                if(parts.length < 2) return;
-                                
-                                const rest = parts[1];
-                                const onIndex = rest.indexOf(' on ');
-                                
-                                if(onIndex === -1) return;
-                                
-                                let rawName = rest.substring(0, onIndex).trim();
-                                // Remove trailing numbers
-                                rawName = rawName.replace(/\s+\d{10,}$/, '');
+                            // Split by 'from' - Safe bet
+                            const parts = line.split(/from\s+/i);
+                            if(parts.length < 2) {
+                                console.log("  -> Error: Missing 'from' keyword");
+                                return;
+                            }
+                            
+                            const rest = parts[1];
+                            const onIndex = rest.indexOf(' on ');
+                            
+                            if(onIndex === -1) {
+                                console.log("  -> Error: Missing 'on' keyword");
+                                return;
+                            }
+                            
+                            let rawName = rest.substring(0, onIndex).trim();
+                            // Remove trailing numbers
+                            rawName = rawName.replace(/\s+\d{10,}$/, '');
 
-                                const dateStr = rest.substring(onIndex + 4); // Skip ' on '
-                                
-                                const dateObj = this.parseSimpleMpesaDate(dateStr);
+                            const dateStr = rest.substring(onIndex + 4); // Skip ' on '
+                            
+                            // Parse Date
+                            const dateObj = this.parseSimpleMpesaDate(dateStr);
 
-                                if(dateObj) {
-                                    results.push({
+                            if(dateObj) {
+                                results.push({
                                             amount,
                                             name: rawName,
                                             method: 'M-Pesa',
                                             ref: 'SMS-' + Math.floor(Math.random()*10000),
                                             date: dateObj
                                         });
-                                    console.log(`  -> Parsed Successfully`);
-                                }
-                            } else if (isTill) {
-                                const tillMatch = line.match(/sent to\s+([A-Z0-9\s]+?)\s+for account/i);
-                                if(tillMatch) {
-                                     const onIndex = line.indexOf(' on ');
-                                     const dateStr = onIndex > -1 ? line.substring(onIndex + 4) : '';
-                                     const dateObj = dateStr ? this.parseSimpleMpesaDate(dateStr) : new Date();
+                                console.log("  -> Parsed Successfully");
+                            } else {
+                                console.log("  -> Date parsing failed");
+                            }
+                            return;
+                        } 
+                        else if (isTill) {
+                            console.log("  -> Type: Till");
+                            const tillMatch = line.match(/sent to\s+([A-Z0-9\s]+?)\s+for account/i);
+                            if(tillMatch) {
+                                 const onIndex = line.indexOf(' on ');
+                                 const dateStr = onIndex > -1 ? line.substring(onIndex + 4) : '';
+                                 const dateObj = dateStr ? this.parseSimpleMpesaDate(dateStr) : new Date();
 
-                                     results.push({
+                                 results.push({
                                             amount,
                                             name: tillMatch[1].trim(),
                                             method: 'Till/Paybill',
                                             ref: 'TILL-' + Math.floor(Math.random()*10000),
                                             date: dateObj
                                         });
-                                     console.log(`  -> Parsed Successfully`);
-                                }
+                                 console.log("  -> Parsed Successfully");
                             }
-                        } catch(lineError) {
-                            console.error("Error processing line", lineError);
+                            return;
+                        } else {
+                            console.log("  -> Unknown format");
                         }
                     });
 
@@ -917,26 +1143,28 @@
 
                 } catch(err) {
                     console.error("Parser Crash:", err);
-                    alert("Critical Error: " + err.message);
+                    alert("Critical Error: " + err.message + ". Check Console for details.");
                     btn.innerText = "⚡ Extract Data";
                 }
             },
 
             parseSimpleMpesaDate(str) {
-                if(!str) return null;
+                // Tries to match "19/1/26 at 2:45 PM"
                 const parts = str.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s+at\s+(\d{1,2}):(\d{2})\s*(AM|PM)/i);
                 if(!parts) return null;
 
-                const day = parseInt(parts[1]);
-                const month = parseInt(parts[2]) - 1;
-                let year = parseInt(parts[3]);
+                const dParts = parts[1].split('/');
+                const day = parseInt(dParts[0]);
+                const month = parseInt(dParts[1]) - 1;
+                let year = parseInt(dParts[2]);
                 if(year < 100) year += 2000;
 
-                let hours = parseInt(parts[4]);
-                const mins = parseInt(parts[5]);
+                const tMatch = parts[2].match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+                let hours = parseInt(tMatch[1]);
+                const mins = parseInt(tMatch[2]);
                 
-                if (parts[6].toUpperCase() === 'PM' && hours !== 12) hours += 12;
-                if (parts[6].toUpperCase() === 'AM' && hours === 12) hours = 0;
+                if (tMatch[3].toUpperCase() === 'PM' && hours !== 12) hours += 12;
+                if (tMatch[3].toUpperCase() === 'AM' && hours === 12) hours = 0;
 
                 return new Date(year, month, day, hours, mins);
             },
@@ -1034,6 +1262,7 @@
                     this.renderDashboard();
                     this.renderPledges();
                     this.renderLedger();
+                    this.renderExpenses();
                     this.renderTribes();
                     this.renderSettingsList();
                     this.populateDeptSelects();
@@ -1044,14 +1273,19 @@
 
             renderDashboard() {
                 const totalCash = store.data.transactions.reduce((sum, t) => sum + t.amount, 0);
+                const totalExpenses = store.data.expenses.reduce((sum, e) => sum + e.amount, 0);
+                const netCash = totalCash - totalExpenses;
                 const totalPledges = store.data.pledges.reduce((sum, p) => sum + p.amount, 0);
-                const rate = totalPledges ? Math.round((totalCash / totalPledges) * 100) : 0;
+                
+                // Adjusted redemption rate: Net Cash / Pledges (Cash Efficiency)
+                const rate = totalPledges ? Math.round((netCash / totalPledges) * 100) : 0;
                 const uniqueDonors = new Set(store.data.transactions.map(t => t.pledgeId)).size;
 
                 document.getElementById('dash-cash').innerText = this.formatMoney(totalCash);
+                document.getElementById('dash-expenses').innerText = this.formatMoney(totalExpenses);
+                document.getElementById('dash-net').innerText = this.formatMoney(netCash);
                 document.getElementById('dash-pledges').innerText = this.formatMoney(totalPledges);
                 document.getElementById('dash-rate').innerText = rate + '%';
-                document.getElementById('dash-donors').innerText = uniqueDonors;
 
                 const phaseContainer = document.getElementById('phase-list');
                 phaseContainer.innerHTML = '';
@@ -1112,6 +1346,10 @@
                                 <td class="text-right">${this.formatMoney(paid)}</td>
                                 <td class="text-right" style="color:${balance > 0 ? 'var(--danger)' : 'var(--text-light)'}">${this.formatMoney(balance)}</td>
                                 <td class="text-right">${status}</td>
+                                <td class="text-right">
+                                    <span class="btn-icon" onclick="app.editPledge('${p.id}')" title="Edit">✎️</span>
+                                    <span class="btn-icon" onclick="app.deletePledge('${p.id}')" style="margin-left:8px; color:var(--danger);" title="Delete">🗑️</span>
+                                </td>
                             </tr>
                         `;
                     }
@@ -1119,23 +1357,55 @@
                 tbody.innerHTML = html;
             },
 
+            renderExpenses() {
+                const tbody = document.getElementById('expenses-table-body');
+                if(store.data.expenses.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">No expenses recorded.</td></tr>';
+                    return;
+                }
+
+                const sortedExp = [...store.data.expenses].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                tbody.innerHTML = sortedExp.map(e => `
+                    <tr>
+                        <td>${this.formatDate(e.date)}</td>
+                        <td><span class="badge badge-warn">${e.category}</span></td>
+                        <td>${e.description}</td>
+                        <td class="money-negative">-${this.formatMoney(e.amount)}</td>
+                        <td><button class="btn btn-sm btn-danger" onclick="alert('Receipt not available for expenses yet.')">📄</button></td>
+                    </tr>
+                `).join('');
+            },
+
             renderLedger() {
                 const tbody = document.getElementById('ledger-table-body');
-                if(store.data.transactions.length === 0) {
+                if(store.data.transactions.length === 0 && store.data.expenses.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">No transactions found.</td></tr>';
                     return;
                 }
 
-                // Sort by date descending (newest first)
-                const sortedTx = [...store.data.transactions].sort((a, b) => new Date(b.date) - new Date(a.date));
+                // Combine transactions and expenses for a full picture, sort by date
+                const ledgerRows = [
+                    ...store.data.transactions.map(t => ({...t, kind: 'credit', color: ''})),
+                    ...store.data.expenses.map(e => ({
+                        id: e.id,
+                        date: e.date,
+                        ref: 'EXP-' + e.id.substr(-4),
+                        description: `Expense: ${e.description}`,
+                        type: 'Expense',
+                        amount: -Math.abs(e.amount), // Make negative for display
+                        category: e.category,
+                        color: 'money-negative'
+                    }))
+                ].sort((a, b) => new Date(a.date) - new Date(b.date));
 
-                tbody.innerHTML = sortedTx.map(t => `
+                tbody.innerHTML = ledgerRows.map(t => `
                     <tr>
                         <td style="font-size:0.85rem; color:var(--text-light);">${this.formatDateTime(t.date)}</td>
                         <td style="font-family:monospace;">${t.ref}</td>
-                        <td>${t.name}</td>
-                        <td><span class="badge badge-success">${t.method}</span></td>
-                        <td class="text-right">${this.formatMoney(t.amount)}</td>
+                        <td>${t.description}</td>
+                        <td><span class="badge ${t.type === 'Expense' ? 'badge-danger' : 'badge-success'}">${t.type}</span></td>
+                        <td class="text-right ${t.color}">${this.formatMoney(t.amount)}</td>
                     </tr>
                 `).join('');
             },
@@ -1150,18 +1420,25 @@
                     const target = deptPledges.reduce((sum, p) => sum + p.amount, 0);
                     
                     const pIds = deptPledges.map(p => p.id);
+                    
+                    // Collected: Income
                     const collected = store.data.transactions
                         .filter(t => pIds.includes(t.pledgeId))
                         .reduce((sum, t) => sum + t.amount, 0);
+
+                    // Deductions
+                    const expenses = store.data.expenses.reduce((sum, e) => sum + e.amount, 0);
+
+                    const netCollected = collected - expenses; // Net Cash
 
                     const phaseTarget = (activePhase && activePhase.deptTargets && activePhase.deptTargets[dept]) 
                         ? activePhase.deptTargets[dept] 
                         : target;
 
-                    const pct = phaseTarget ? Math.round((collected / phaseTarget) * 100) : 0;
+                    const pct = phaseTarget ? Math.round((netCollected / phaseTarget) * 100) : 0;
 
-                    return { dept, target, collected, pct, phaseTarget };
-                }).sort((a,b) => b.collected - a.collected);
+                    return { dept, target, collected, pct, phaseTarget, netCollected };
+                }).sort((a,b) => b.netCollected - a.netCollected);
 
                 container.innerHTML = deptStats.map((d, i) => `
                     <div class="card">
@@ -1173,8 +1450,8 @@
                             <div class="progress-fill" style="width: ${d.pct}%"></div>
                         </div>
                         <div class="flex-between" style="font-size:0.9rem;">
-                            <span class="text-light">Collected</span>
-                            <strong>${this.formatMoney(d.collected)}</strong>
+                            <span class="text-light">Net Cash</span>
+                            <strong>${this.formatMoney(d.netCollected)}</strong>
                         </div>
                         <div class="flex-between" style="font-size:0.9rem;">
                             <span class="text-light">Phase Target</span>
@@ -1239,6 +1516,11 @@
                     store.data.pledges.forEach(p => {
                         const paid = store.data.transactions.filter(t => t.pledgeId === p.id).reduce((s,t)=>s+t.amount,0);
                         csv.push([`"${p.name}"`, p.department, p.amount, paid, p.amount-paid]);
+                    });
+                } else if (type === 'expenses') {
+                    csv.push(['Date', 'Category', 'Description', 'Amount']);
+                    store.data.expenses.forEach(e => {
+                        csv.push([e.date, e.category, `"${e.description}"`, e.amount]);
                     });
                 } else {
                     csv.push(['Date', 'Reference', 'Name', 'Method', 'Amount']);
